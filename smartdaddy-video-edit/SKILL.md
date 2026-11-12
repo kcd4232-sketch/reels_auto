@@ -60,4 +60,3 @@ description: 녹화 영상의 컷·자막·효과음·모션을 편집하거나,
 - 결과는 WORK_ROOT/편집/elevenlabs/ 아래 MP3, SRT, 타임라인 JSON, 자막이 들어간 세로 MP4로 저장된다. 컷의 뜻이 문장과 맞는지는 미리보기를 확인한다.
 - CapCut 네이티브 오디오 템플릿이 없으면 MP4와 SRT를 제공하고 CapCut 프로젝트 자동 등록을 성공으로 보고하지 않는다.
 - 이 기능의 자세한 사용법과 현재 작업 폴더 예시는 WORK_ROOT/README_ElevenLabs.md를 참고한다.
-

@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>모션 카드</title>
+<!--
+  모션 카드 6종 (1920×1080). window.render(t, dur)가 t초 순간의 화면을 그린다. 같은 t면 언제나 같은 그림이다.
+  종류(kind): title · number · steps · verdict · score · compare
+  값은 주소 뒤에 붙인다.
+    ?kind=number&title=편집 시간&from=30&to=8&unit=시간
+    목록은 | 로 구분한다:  ?kind=steps&title=내 편집팀&items=감독|신입 편집자|받아쓰기
+    또는 JSON 한 덩어리:   ?kind=steps&data={"title":"내 편집팀","items":["감독","신입 편집자"]}
+  [대괄호]로 감싼 낱말은 흰 스티커(검은 글자, 살짝 기울임)로 강조된다. 줄바꿈은 \n.
+  렌더:  python scripts/render_motion.py motion/cards.html out.mp4 --dur 4 --query "kind=title&label=ROUND 2&title=자막"
+  브라우저로 미리 보기:  cards.html?kind=title&title=첫 화면&play=1&dur=3
+  종류별 값과 예시는 examples.md, 원칙은 references/motion.md.
+-->
+<style>
+/* 글꼴: 설치된 Pretendard → 없으면 이 HTML 옆 fonts/ 폴더의 Pretendard 파일 → 맑은 고딕 · Apple SD 고딕 순.
+   글꼴 파일은 스킬에 넣지 않았다. 크로미움이 설치본을 못 찾으면 Pretendard-Light.otf 등을 fonts/에 복사한다. */
+@font-face{font-family:'PretendardCard';font-weight:300;src:local('Pretendard Light'),local('Pretendard-Light'),url(fonts/Pretendard-Light.woff2) format('woff2'),url(fonts/Pretendard-Light.otf) format('opentype')}
+@font-face{font-family:'PretendardCard';font-weight:400;src:local('Pretendard Regular'),local('Pretendard-Regular'),url(fonts/Pretendard-Regular.woff2) format('woff2'),url(fonts/Pretendard-Regular.otf) format('opentype')}
+@font-face{font-family:'PretendardCard';font-weight:500;src:local('Pretendard Medium'),local('Pretendard-Medium'),url(fonts/Pretendard-Medium.woff2) format('woff2'),url(fonts/Pretendard-Medium.otf) format('opentype')}
+@font-face{font-family:'PretendardCard';font-weight:600;src:local('Pretendard SemiBold'),local('Pretendard-SemiBold'),url(fonts/Pretendard-SemiBold.woff2) format('woff2'),url(fonts/Pretendard-SemiBold.otf) format('opentype')}
+@font-face{font-family:'PretendardCard';font-weight:700;src:local('Pretendard Bold'),local('Pretendard-Bold'),url(fonts/Pretendard-Bold.woff2) format('woff2'),url(fonts/Pretendard-Bold.otf) format('opentype')}
+@font-face{font-family:'PretendardCardV';font-weight:100 900;src:local('Pretendard Variable'),url(fonts/PretendardVariable.woff2) format('woff2'),url(fonts/PretendardVariable.ttf) format('truetype')}
+:root{--bg:#07080B;--card:rgba(24,25,31,.82);--line:rgba(255,255,255,.11);--ink:#F4F5F7;--sub:#A3A9B3;--dim:#6B717C;--ac:#FF8A5B;--ac2:#3EE6C8}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#07080B}
+body{font-family:'PretendardCard','PretendardCardV','Pretendard','Pretendard Variable','Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+#frame{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:50% 50%}
+#bg{position:absolute;left:0;top:0}
+#stage{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#grain{position:absolute;left:0;top:0;width:1920px;height:1080px;opacity:.055;mix-blend-mode:overlay;pointer-events:none}
+.an{will-change:transform,opacity,filter}
+.col{display:flex;flex-direction:column;align-items:center}
+.glass{background:var(--card);border:1.5px solid var(--line);border-radius:22px;box-shadow:0 30px 60px rgba(0,0,0,.45)}
+/* 강조 = 반전 스티커(흰 상자 + 검은 글자, 살짝 기울임). 색 글자로 강조하지 않는다 */
+.stk{display:inline-block;background:#fff;color:#0A0B0E;padding:0 .2em .05em;margin:0 .07em;border-radius:.1em;transform:rotate(-2.5deg);box-shadow:0 .08em .3em rgba(0,0,0,.45);letter-spacing:-.01em}
+.label{font-size:34px;font-weight:600;letter-spacing:.24em;padding-left:.24em;color:#C9CDD3;white-space:nowrap}
+.pill{display:flex;align-items:center;gap:16px;height:62px;padding:0 30px 0 24px;border-radius:31px;background:rgba(255,255,255,.05);border:1.5px solid var(--line);font-weight:600;font-size:30px;color:#DADDE2;white-space:nowrap}
+.dots{display:flex;gap:9px}
+.dots i{display:block;width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.18)}
+.sub{font-size:46px;font-weight:500;color:var(--sub);max-width:1500px;text-align:center;line-height:1.42;word-break:keep-all;text-wrap:balance}
+.ch{display:inline-block}
+
+/* title */
+.t-label{display:flex;align-items:center;gap:26px;font-size:32px;font-weight:600;color:#C9CDD3;margin-bottom:38px;white-space:nowrap}
+.t-label i{display:block;height:2px;width:72px;background:rgba(255,255,255,.28)}
+.t-head{font-size:132px;font-weight:700;letter-spacing:-.02em;line-height:1.16;text-align:center;white-space:nowrap}
+.t-line{width:120px;height:4px;border-radius:2px;background:var(--ac);box-shadow:0 0 18px rgba(255,138,91,.7);margin:44px 0 38px}
+.t-dots{margin-top:52px;display:flex;gap:14px}
+.t-dots i{display:block;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.16)}
+
+/* number */
+.n-row{position:relative;display:flex;align-items:baseline;margin-top:22px}
+.n-val{font-size:300px;font-weight:300;line-height:1.02;letter-spacing:-.03em;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.n-unit{font-size:92px;font-weight:500;color:#9AA0AA;margin-left:24px;white-space:nowrap}
+.n-badge{position:absolute;left:100%;top:6%;margin-left:34px;font-size:62px;font-weight:700;white-space:nowrap}
+.n-bar{position:relative;width:1100px;height:20px;margin-top:50px}
+.n-track{position:absolute;inset:0;border-radius:10px;background:rgba(255,255,255,.06)}
+.n-ghost{position:absolute;left:0;top:0;bottom:0;border-radius:10px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.2)}
+.n-fill{position:absolute;left:0;top:0;bottom:0;border-radius:10px;background:linear-gradient(90deg,#FF8A5B,#FFB08E);box-shadow:0 0 22px rgba(255,138,91,.55)}
+.n-from{position:absolute;top:38px;font-size:30px;font-weight:600;color:#858B96;white-space:nowrap;letter-spacing:.04em}
+.n-sub{margin-top:64px}
+.n-sub.lo{margin-top:104px}
+
+/* steps */
+.s-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:28px;margin-top:64px}
+.s-card{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:28px 32px 30px}
+.s-no{font-size:26px;font-weight:600;letter-spacing:.14em;color:var(--dim)}
+.s-name{font-size:50px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.s-sub{font-size:34px;font-weight:500;color:#9AA0AA;margin-top:8px;white-space:nowrap}
+.s-list{display:flex;flex-direction:column;gap:18px;margin-top:56px}
+.s-row{width:1240px;display:flex;align-items:center;gap:34px;padding:0 46px}
+.s-row .s-sub{margin:0 0 0 auto}
+
+/* verdict */
+.v-title{font-size:64px;font-weight:700;letter-spacing:-.01em;margin-bottom:50px;white-space:nowrap}
+.v-wrap{display:flex;gap:40px;align-items:stretch}
+.v-panel{width:800px;padding:44px 52px 36px}
+.v-hd{display:flex;align-items:center;gap:22px;font-size:52px;font-weight:700;padding-bottom:30px;margin-bottom:20px;border-bottom:1.5px solid rgba(255,255,255,.08);white-space:nowrap}
+.v-hd svg{width:60px;height:60px;flex:none;display:block}
+.v-item{display:flex;align-items:center;gap:26px;height:88px;font-size:46px;font-weight:600;color:#E9EBEE;white-space:nowrap}
+.v-b{flex:none;width:36px;height:36px;display:flex;align-items:center;justify-content:center}
+.v-b svg{width:36px;height:36px;display:block}
+.v-b i{display:block;width:16px;height:16px;border-radius:50%;border:3px solid var(--ac)}
+
+/* score */
+.sc-row{display:flex;gap:48px;margin-top:64px}
+.sc-card{position:relative;height:540px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.sc-name{font-size:54px;font-weight:700;white-space:nowrap}
+.sc-valw{position:relative;margin-top:6px}
+.sc-val{display:block;font-size:280px;font-weight:300;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.sc-plus{position:absolute;left:100%;top:16%;margin-left:12px;font-size:60px;font-weight:600;color:#fff;white-space:nowrap}
+
+/* compare */
+.c-row{display:flex;align-items:center;margin-top:56px}
+.c-panel{width:760px;min-height:560px;padding:48px 56px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.c-val{font-size:220px;font-weight:300;line-height:1.05;letter-spacing:-.02em;margin-top:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.c-val small{font-size:72px;font-weight:500;color:#9AA0AA;margin-left:16px;letter-spacing:0}
+.c-val.img{font-size:140px}.c-val.img small{font-size:56px}
+.c-note{font-size:40px;font-weight:500;color:var(--sub);margin-top:20px;max-width:640px;line-height:1.4;word-break:keep-all;text-wrap:balance}
+.c-panel .label{font-size:38px;letter-spacing:.16em;padding-left:.16em}
+.c-img{width:648px;height:364px;object-fit:cover;border-radius:14px;border:1.5px solid var(--line);margin-top:26px;display:block}
+.c-mid{width:150px;display:flex;justify-content:center}
+.c-mid span{width:100px;height:100px;border-radius:50%;border:1.5px solid var(--line);background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:600;color:#DADDE2;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="frame"><canvas id="bg" width="1920" height="1080"></canvas><div id="stage"></div></div>
+<canvas id="grain" width="480" height="270"></canvas>
+<script>
+'use strict';
+// ───────── 공통 도구
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const P = (t, a, b) => b <= a ? (t >= a ? 1 : 0) : clamp((t - a) / (b - a));     // a~b 구간 진행도 0~1
+const lerp = (a, b, q) => a + (b - a) * q;
+const E = { out: x => 1 - (1 - x) ** 2, out3: x => 1 - (1 - x) ** 3, out4: x => 1 - (1 - x) ** 4,
+  sine: x => -(Math.cos(Math.PI * x) - 1) / 2, bump: x => Math.sin(Math.PI * clamp(x)) };
+
+// ───────── 값 읽기: 주소 뒤 ?a=b 와 data={JSON}
+const Q = new URLSearchParams(location.search);
+const D = {};
+const undo = v => { if (typeof v === 'string' && /%[0-9A-Fa-f]{2}/.test(v)) { try { return decodeURIComponent(v) } catch (e) {} } return v };
+for (const [k, v] of Q) if (k !== 'data') D[k] = undo(v);
+let ERR = '';
+if (Q.has('data')) {
+  const raw = Q.get('data'); let obj = null;
+  // 그대로 → 한 번 더 풀어서(미리 인코딩한 경우) → 작은따옴표를 큰따옴표로(PowerShell용)
+  for (const f of [s => JSON.parse(s), s => JSON.parse(decodeURIComponent(s)), s => JSON.parse(s.replace(/'/g, '"'))]) { try { obj = f(raw); break } catch (e) {} }
+  if (obj && typeof obj === 'object' && !Array.isArray(obj)) Object.assign(D, obj);
+  else ERR = 'data= 값을 JSON으로 읽지 못했습니다: ' + raw.slice(0, 60);
+}
+const has = v => v !== undefined && v !== null && v !== '';
+const str = (v, d = '') => has(v) ? String(v) : d;
+const num = (v, d = 0) => { if (!has(v)) return d; const n = parseFloat(String(v).replace(/,/g, '')); return isFinite(n) ? n : d };
+const list = v => Array.isArray(v) ? v : (has(v) ? String(v).split('|').map(s => s.trim()) : []);
+const decs = v => { const m = String(v ?? '').replace(/,/g, '').match(/\.(\d+)/); return m ? m[1].length : 0 };
+const isNum = v => typeof v === 'number' || /^\s*-?[\d,]*\.?\d+\s*$/.test(String(v ?? ''));
+const GROUP = !['0', 0, false, 'false'].includes(D.group);
+const fmt = (v, d) => GROUP ? v.toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d }) : v.toFixed(d);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const rich = s => esc(s).replace(/\\n|\n/g, '<br>').replace(/\[([^\]]+)\]/g, '<span class="stk">$1</span>');
+
+// ───────── 그리기 도구
+const stage = $('#stage'), frame = $('#frame');
+function add(html, parent = stage) { const d = document.createElement('div'); d.innerHTML = html.trim(); const e = d.firstElementChild; parent.appendChild(e); return e }
+function S(e, o = {}) {
+  const x = o.x || 0, y = o.y || 0, s = o.s ?? 1, b = o.b || 0;
+  let tr = o.persp ? `perspective(${o.persp}px) ` : '';
+  tr += `translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,0)`;
+  if (o.rx) tr += ` rotateX(${o.rx.toFixed(2)}deg)`;
+  if (o.ry) tr += ` rotateY(${o.ry.toFixed(2)}deg)`;
+  if (o.r) tr += ` rotate(${o.r.toFixed(2)}deg)`;
+  if (s !== 1) tr += ` scale(${s.toFixed(4)})`;
+  e.style.transform = tr; e.style.opacity = clamp(o.o ?? 1).toFixed(3); e.style.filter = b > .05 ? `blur(${b.toFixed(2)}px)` : 'none';
+}
+// 등장 방식들. 카드 종류마다 다른 것을 쓴다.
+function rise(e, t, t0, d = .6, ex = {}) {          // 흐림 → 선명 + 위로 28px
+  const p = E.out4(P(t, t0, t0 + d)); S(e, { ...ex, y: (ex.y || 0) + (1 - p) * 28, o: (ex.o ?? 1) * E.out(P(t, t0, t0 + d * .55)), b: (1 - p) * 14 }); return p }
+function blurIn(e, t, t0, d = .8, ex = {}) {        // 크게 흐린 채로 다가오며 선명해짐
+  const p = E.out3(P(t, t0, t0 + d)); S(e, { ...ex, s: (ex.s ?? 1) * lerp(.9, 1, p), o: (ex.o ?? 1) * E.out(P(t, t0, t0 + d * .5)), b: (1 - p) * 26 }); return p }
+function push(e, t, t0, d = .6, dir = 1, ex = {}, dist = 110) { // 옆에서 밀려 들어옴 (dir 1 = 오른쪽에서, -1 = 왼쪽에서)
+  const p = E.out4(P(t, t0, t0 + d)); S(e, { ...ex, x: (ex.x || 0) + (1 - p) * dist * dir, o: (ex.o ?? 1) * E.out(P(t, t0, t0 + d * .5)), b: (1 - p) * 12 }); return p }
+function flip(e, t, t0, d = .8, ex = {}) {          // 누워 있던 카드가 일어섬
+  const p = E.out4(P(t, t0, t0 + d)); e.style.transformOrigin = '50% 100%';
+  S(e, { ...ex, persp: 1600, rx: (1 - p) * 72, y: (ex.y || 0) + (1 - p) * 24, o: (ex.o ?? 1) * E.out(P(t, t0, t0 + d * .45)), b: (1 - p) * 8 }); return p }
+function wipe(e, t, t0, d = .75, dir = 'r', ex = {}) { // 부드러운 가장자리로 쓸어 열기 (r = 왼쪽→오른쪽, l = 오른쪽→왼쪽)
+  const p = E.out3(P(t, t0, t0 + d));
+  const m = p >= 1 ? 'none' : `linear-gradient(${dir === 'l' ? 270 : 90}deg,#000 ${(p * 135 - 35).toFixed(1)}%,transparent ${(p * 135).toFixed(1)}%)`;
+  e.style.webkitMaskImage = m; e.style.maskImage = m;
+  S(e, { ...ex, x: (ex.x || 0) + (1 - p) * 30 * (dir === 'l' ? 1 : -1), o: p > 0 ? (ex.o ?? 1) : 0 }); return p }
+function splitChars(el) {                            // 글자 하나씩 등장용: 스티커 바깥 글자를 <span class="ch">로 감싼다
+  const walk = n => { for (const c of [...n.childNodes]) {
+    if (c.nodeType === 3) { const f = document.createDocumentFragment();
+      for (const ch of Array.from(c.textContent)) { const s = document.createElement('span'); s.className = 'ch'; s.textContent = ch; if (ch === ' ') s.style.whiteSpace = 'pre'; f.appendChild(s) }
+      c.replaceWith(f) }
+    else if (c.nodeType === 1 && !c.classList.contains('stk') && c.tagName !== 'BR') walk(c) } };
+  walk(el); return $$('.ch', el);
+}
+function stamp(stks, t, t0) {                        // 스티커 붙이기: 카드 하나에 한 번 쓰는 큰 강조
+  stks.forEach((s, i) => { const a = t0 + i * .12, p = E.out4(P(t, a, a + .34)); S(s, { s: lerp(1.28, 1, p), r: lerp(-9, -2.5, p), o: E.out(P(t, a, a + .12)) }) });
+}
+function fit(el, maxW, minScale = .6) {               // 넘치면 글자 크기를 줄인다
+  el.style.fontSize = ''; const base = parseFloat(getComputedStyle(el).fontSize), w = Math.max(el.scrollWidth, el.offsetWidth);
+  if (w > maxW) el.style.fontSize = Math.max(base * minScale, Math.floor(base * maxW / w)) + 'px';
+}
+const glowRGB = (q, base = [255, 255, 255], a0 = .11) => `rgba(${[255, 138, 91].map((v, j) => Math.round(lerp(base[j], v, q))).join(',')},${(a0 + (.8 - a0) * q).toFixed(3)})`;
+function lightCard(e, on, extraShadow = '') {        // 활성 칸: 주황 테두리 + 바깥 빛 + 안쪽 빛
+  e.style.borderColor = glowRGB(on);
+  e.style.boxShadow = `0 30px 60px rgba(0,0,0,.45),0 0 ${(46 * on).toFixed(1)}px rgba(255,138,91,${(.5 * on).toFixed(3)}),inset 0 0 ${(30 * on).toFixed(1)}px rgba(255,138,91,${(.08 * on).toFixed(3)})${extraShadow}`;
+}
+function dot(i, q, size = 11) { i.style.background = q > .01 ? `rgba(255,${Math.round(lerp(255, 138, q))},${Math.round(lerp(255, 91, q))},${lerp(.18, 1, q).toFixed(3)})` : ''; i.style.boxShadow = q > .01 ? `0 0 ${(size * 1.1 * q).toFixed(1)}px rgba(255,138,91,${(.85 * q).toFixed(3)})` : 'none' }
+function pill(text, n) { const e = add(`<div class="pill an"><span class="dots">${'<i></i>'.repeat(Math.max(1, n))}</span><span>${rich(text)}</span></div>`); return { e, dots: $$('.dots i', e) } }
+function evenly(n, a, b) { if (n <= 1) return [a]; const st = Math.max(.25, (b - a) / (n - 1)); return Array.from({ length: n }, (_, i) => a + i * st) }
+const ICON = {
+  check: (c, sw = 3.4) => `<svg viewBox="0 0 48 48" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="20"/><path d="M15 24.5l6 6 12-13"/></svg>`,
+  person: c => `<svg viewBox="0 0 48 48" fill="none" stroke="${c}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="20"/><circle cx="24" cy="19" r="5.5"/><path d="M14.5 35c1.6-5 5-7.4 9.5-7.4s7.9 2.4 9.5 7.4"/></svg>`,
+  tick: c => `<svg viewBox="0 0 36 36" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18.5l6.5 6.5L28 11"/></svg>`,
+};
+
+// ───────── 1. title: 챕터·라운드 카드 (작은 라벨 + 큰 제목 + 의미 한 줄)
+function kTitle() {
+  const MODES = ['letters', 'rise', 'blur', 'wipe', 'push', 'flip'];
+  const mode = MODES.includes(D.in) ? D.in : 'letters';
+  const of = Math.round(num(D.of)), n = Math.round(num(D.n));
+  const w = add(`<div class="col">
+    ${has(D.label) ? `<div class="t-label an"><i></i><span>${rich(D.label)}</span><i></i></div>` : ''}
+    <div class="t-head an">${rich(str(D.title, '제목'))}</div>
+    <div class="t-line an"${has(D.sub) ? '' : ' style="margin-bottom:0"'}></div>
+    ${has(D.sub) ? `<div class="sub t-sub an">${rich(D.sub)}</div>` : ''}
+    ${of > 0 ? `<div class="t-dots an">${'<i></i>'.repeat(of)}</div>` : ''}
+  </div>`);
+  const lab = $('.t-label', w), labT = lab && $('span', lab), lines = lab ? $$('i', lab) : [];
+  const head = $('.t-head', w), line = $('.t-line', w), sub = $('.t-sub', w), dotsBox = $('.t-dots', w), dots = dotsBox ? $$('i', dotsBox) : [];
+  const stks = $$('.stk', head);
+  let chs = [];
+  const h0 = lab ? .28 : .1;
+  const headDur = () => mode === 'letters' ? (chs.length - 1) * .04 + .5 : mode === 'push' ? .65 : mode === 'rise' ? .6 : .8;
+  return {
+    lay() { if (mode === 'letters' && !chs.length) chs = splitChars(head); fit(head, 1660); },
+    upd(t) {
+      if (lab) { const p = E.out4(P(t, .05, .95)), ls = lerp(.7, .32, p);  // 라벨: 자간이 좁혀지며 들어옴
+        labT.style.letterSpacing = ls + 'em'; labT.style.marginRight = (-ls) + 'em'; S(lab, { o: E.out(P(t, .05, .5)), b: (1 - p) * 6 });
+        lines.forEach(l => l.style.width = (72 * E.out4(P(t, .3, 1))).toFixed(1) + 'px'); }
+      if (mode === 'letters') chs.forEach((c, i) => rise(c, t, h0 + i * .04, .5));
+      else if (mode === 'rise') rise(head, t, h0);
+      else if (mode === 'blur') blurIn(head, t, h0);
+      else if (mode === 'wipe') wipe(head, t, h0, .8);
+      else if (mode === 'push') push(head, t, h0, .65, 1);
+      else if (mode === 'flip') flip(head, t, h0, .8);
+      const hEnd = h0 + headDur();
+      if (stks.length) stamp(stks, t, hEnd + .05);
+      const lp = E.out4(P(t, hEnd - .2, hEnd + .4)); line.style.transform = `scaleX(${lp.toFixed(4)})`; line.style.opacity = lp.toFixed(3);
+      if (sub) rise(sub, t, hEnd - .25);
+      if (dotsBox) { rise(dotsBox, t, hEnd); dots.forEach((d, i) => dot(d, i < n - 1 ? 1 : i === n - 1 ? E.out(P(t, hEnd + .3, hEnd + .6)) : 0, 14)) }
+    } };
+}
+
+// ───────── 2. number: 숫자 굴리기 (0 또는 from → to) + 줄거나 자라는 막대
+function kNumber() {
+  const to = num(D.to ?? D.value), hasFrom = has(D.from), from = hasFrom ? num(D.from) : 0;
+  const dd = Math.max(decs(D.to ?? D.value), hasFrom ? decs(D.from) : 0);
+  const max = num(D.max) || Math.max(Math.abs(to), Math.abs(from)) || 1, min = num(D.min);   // 막대는 min~max 범위(기본 0~큰 값)
+  const at = num(D.at, .6), roll = num(D.roll, 1.2), unit = str(D.unit);
+  const fromTxt = hasFrom ? `${has(D.fromlabel) ? esc(D.fromlabel) + ' ' : ''}${fmt(from, dd)}${esc(unit)}` : '';
+  const w = add(`<div class="col">
+    ${has(D.title) ? `<div class="label an">${rich(D.title)}</div>` : ''}
+    <div class="n-row an"><span class="n-val">${fmt(from, dd)}</span>${unit ? `<span class="n-unit">${esc(unit)}</span>` : ''}${has(D.badge) ? `<div class="n-badge"><span class="stk">${esc(D.badge)}</span></div>` : ''}</div>
+    <div class="n-bar"><div class="n-track an">${hasFrom ? '<div class="n-ghost"></div>' : ''}<div class="n-fill"></div></div>${hasFrom ? `<div class="n-from an">${fromTxt}</div>` : ''}</div>
+    ${has(D.sub) ? `<div class="sub n-sub${hasFrom ? ' lo' : ''} an">${rich(D.sub)}</div>` : ''}
+  </div>`);
+  const lab = $('.label', w), row = $('.n-row', w), val = $('.n-val', w), bar = $('.n-track', w), fill = $('.n-fill', w), ghost = $('.n-ghost', w), fl = $('.n-from', w), sub = $('.n-sub', w), stks = $$('.stk', w);
+  let w0 = 0, w1 = 0, box = 0;
+  const pct = v => clamp((Math.abs(v) - min) / ((max - min) || 1)) * 100;
+  return {
+    lay() { if (lab) fit(lab, 1600);
+      val.style.width = 'auto'; val.textContent = fmt(from, dd); w0 = val.offsetWidth; val.textContent = fmt(to, dd); w1 = val.offsetWidth;
+      box = Math.max(w0, w1); val.style.width = box + 'px';
+      if (ghost) { ghost.style.width = pct(from) + '%'; fl.style.left = `calc(${pct(from)}% - ${pct(from) > 50 ? fl.offsetWidth : 0}px)` } },
+    upd(t) {
+      if (lab) rise(lab, t, .05);
+      const q = E.out3(P(t, at, at + roll)), v = lerp(from, to, q);
+      val.textContent = fmt(v, dd);
+      blurIn(row, t, .15, .8, { x: -(box - lerp(w0, w1, q)) / 2 });          // 숫자 칸 폭이 바뀌어도 가운데가 부드럽게 유지되게
+      wipe(bar, t, .35, .7);
+      fill.style.width = pct(v).toFixed(3) + '%';
+      if (ghost) { ghost.style.opacity = E.out(P(t, at, at + .4)).toFixed(3); rise(fl, t, at + .1, .6) }
+      if (sub) rise(sub, t, at + roll - .35);
+      if (stks.length) stamp(stks, t, at + roll + .05);
+    } };
+}
+
+// ───────── 3. steps: 3~8칸, 이름은 흐리게 가려 두고 말하는 순서대로 한 칸씩 주황 빛으로 켠다
+function kSteps() {
+  const raw = Array.isArray(D.items) ? D.items : list(D.items).filter(s => s !== '');
+  const subs = list(D.subs), ats = list(D.at);
+  const items = raw.slice(0, 8).map((it, i) => {
+    const o = it && typeof it === 'object' ? it : { name: it, sub: subs[i] };
+    const a = has(o.at) ? o.at : ats[i];
+    return { name: str(o.name ?? o.t ?? o.title), sub: str(o.sub), at: has(a) ? num(a) : null };
+  });
+  if (!items.length) throw new Error('steps에 items가 없습니다');
+  const n = items.length, isList = D.layout === 'list';
+  const cols = Math.round(num(D.cols)) || (n <= 4 ? n : Math.ceil(n / 2));
+  const cw = cols >= 4 ? 400 : cols === 3 ? 470 : 560, hasSub = items.some(x => x.sub);
+  const big = cols <= 3, ch = (hasSub ? 250 : 200) + (big ? 40 : 0), nameFs = cols >= 4 ? 50 : cols === 3 ? 58 : 64, rowH = Math.min(112, Math.floor((860 - (n - 1) * 18) / n));
+  const pl = pill(str(D.title, '단계'), n);
+  const box = add(isList ? '<div class="s-list"></div>' : `<div class="s-grid" style="width:${cols * cw + (cols - 1) * 28}px"></div>`);
+  const cards = items.map((it, i) => {
+    const c = add(isList
+      ? `<div class="s-row glass an" style="height:${rowH}px"><div class="s-no">${String(i + 1).padStart(2, '0')}</div><div class="s-name">${rich(it.name)}</div>${it.sub ? `<div class="s-sub">${rich(it.sub)}</div>` : ''}</div>`
+      : `<div class="s-card glass an" style="width:${cw}px;height:${ch}px"><div class="s-no">${String(i + 1).padStart(2, '0')}</div><div><div class="s-name" style="font-size:${nameFs}px">${rich(it.name)}</div>${it.sub ? `<div class="s-sub"${big ? ' style="font-size:38px"' : ''}>${rich(it.sub)}</div>` : ''}</div></div>`, box);
+    return { c, no: $('.s-no', c), name: $('.s-name', c), sub: $('.s-sub', c) };
+  });
+  return {
+    lay() { cards.forEach(q => { fit(q.name, isList ? 760 : cw - 64, .7); if (q.sub) fit(q.sub, isList ? 380 : cw - 64, .75) }) },
+    upd(t, dur, end) {
+      const auto = evenly(n, Math.max(1.0, .2 + n * .07 + .6), end - .6), A = items.map((it, i) => it.at ?? auto[i]);
+      rise(pl.e, t, .05);
+      cards.forEach((q, i) => {
+        const a = A[i], nx = i < n - 1 ? A[i + 1] : Infinity;
+        const on = E.out(P(t, a, a + .3)) * (1 - E.out(P(t, nx, nx + .35)));    // 다음 칸이 켜지면 꺼진다(한 번에 한 칸)
+        const rev = E.out4(P(t, a + .02, a + .42));                              // 이름 공개(되돌아가지 않음)
+        rise(q.c, t, .2 + i * .07, .6, { s: 1 + .035 * on });
+        lightCard(q.c, on);
+        [q.name, q.sub].forEach(e => { if (!e) return; e.style.filter = rev < .98 ? `blur(${(12 * (1 - rev)).toFixed(2)}px)` : 'none'; e.style.opacity = (.42 + .58 * rev).toFixed(3) });
+        q.no.style.color = `rgba(${Math.round(lerp(107, 255, on))},${Math.round(lerp(113, 255, on))},${Math.round(lerp(124, 255, on))},1)`;
+        dot(pl.dots[i], E.out(P(t, a, a + .3)));
+      });
+    } };
+}
+
+// ───────── 4. verdict: 왼쪽 "AI가 됩니다" / 오른쪽 "아직 사람 몫", 항목이 하나씩
+function kVerdict() {
+  const norm = (arr) => (Array.isArray(arr) ? arr : list(arr).filter(s => s !== '')).slice(0, 6).map(it => it && typeof it === 'object' ? { t: str(it.t ?? it.name ?? it.text), at: has(it.at) ? num(it.at) : null } : { t: str(it), at: null });
+  const L = norm(D.ai ?? D.yes), R = norm(D.human ?? D.no), ats = list(D.at);
+  [...L, ...R].forEach((it, i) => { if (it.at === null && has(ats[i])) it.at = num(ats[i]) });
+  const rows = Math.max(L.length, R.length, 1);
+  const w = add(`<div class="col">
+    ${has(D.title) ? `<div class="v-title an">${rich(D.title)}</div>` : ''}
+    <div class="v-wrap">
+      <div class="v-panel glass an"><div class="v-hd an">${ICON.check('#3EE6C8')}<span>${rich(str(D.left, 'AI가 됩니다'))}</span></div><div class="v-list"></div></div>
+      <div class="v-panel glass an"><div class="v-hd an">${ICON.person('#FF8A5B')}<span>${rich(str(D.right, '아직 사람 몫'))}</span></div><div class="v-list"></div></div>
+    </div></div>`);
+  const title = $('.v-title', w), panels = $$('.v-panel', w), hds = $$('.v-hd', w), lists = $$('.v-list', w);
+  lists.forEach(l => l.style.minHeight = (rows * 88) + 'px');
+  const mk = (it, k) => { const e = add(`<div class="v-item an"><span class="v-b">${k ? '<i></i>' : ICON.tick('#3EE6C8')}</span><span class="v-t">${rich(it.t)}</span></div>`, lists[k]); return { e, b: $('.v-b', e), txt: $('.v-t', e), side: k, at: it.at } };
+  const items = [...L.map(it => mk(it, 0)), ...R.map(it => mk(it, 1))];
+  return {
+    lay() { if (title) fit(title, 1640); items.forEach(q => fit(q.txt, 800 - 104 - 62, .7)) },
+    upd(t, dur, end) {
+      const t0 = title ? .2 : .05;
+      if (title) rise(title, t, .05);
+      panels.forEach((p, k) => rise(p, t, t0 + k * .07, .6));
+      hds.forEach((h, k) => wipe(h, t, t0 + .3 + k * .07, .7));
+      const auto = evenly(items.length, t0 + 1.0, end - .5);
+      items.forEach((q, i) => {
+        const a = q.at ?? auto[i];
+        push(q.e, t, a, .55, -1, {}, 56);                                               // 왼쪽에서 밀려 들어옴
+        const g = E.bump(P(t, a + .1, a + .9)), c = q.side ? '255,138,91' : '62,230,200';
+        q.b.style.filter = g > .01 ? `drop-shadow(0 0 ${(12 * g).toFixed(1)}px rgba(${c},${(.9 * g).toFixed(2)}))` : 'none';
+      });
+    } };
+}
+
+// ───────── 5. score: 2~3명 점수판, 이긴 쪽 점수가 굴러 오르며 한 번 커졌다 돌아온다
+function kScore() {
+  let P_ = Array.isArray(D.players) ? D.players.map(p => ({ name: str(p.name), score: num(p.score) }))
+    : list(D.names).filter(s => s !== '').map((nm, i) => ({ name: nm, score: num(list(D.scores)[i]) }));
+  P_ = P_.slice(0, 3);
+  if (P_.length < 2) throw new Error('score에는 2~3명이 필요합니다 (names=A|B, scores=1|2)');
+  let wi = -1;
+  if (has(D.win)) { const k = P_.findIndex(p => p.name === String(D.win)); wi = k >= 0 ? k : (isNum(D.win) ? Math.round(num(D.win)) - 1 : -1) }
+  const addN = num(D.add, 1), at = num(D.at, 1.4), of = Math.round(num(D.of)), rn = Math.round(num(D.n));
+  const cw = P_.length === 3 ? 440 : 540;
+  const pl = has(D.title) ? pill(D.title, of || 1) : null;
+  const row = add('<div class="sc-row"></div>');
+  const cards = P_.map((p, i) => { const c = add(`<div class="sc-card glass an" style="width:${cw}px"><div class="sc-name">${rich(p.name)}</div><div class="sc-valw"><span class="sc-val">${fmt(p.score, decs(p.score))}</span>${i === wi ? `<span class="sc-plus an">+${fmt(addN, decs(addN))}</span>` : ''}</div></div>`, row);
+    return { c, name: $('.sc-name', c), val: $('.sc-val', c), plus: $('.sc-plus', c) } });
+  return {
+    lay() { cards.forEach(q => fit(q.name, cw - 60, .7)) },
+    upd(t) {
+      if (pl) { rise(pl.e, t, .05); pl.dots.forEach((d, i) => dot(d, of ? (i < rn ? 1 : 0) : 1)) }
+      cards.forEach((q, i) => {
+        const win = i === wi, p = P_[i];
+        let s = 1, o = 1, on = 0;
+        if (wi >= 0) {
+          if (win) {
+            const r = E.out3(P(t, at, at + .45)), v = lerp(p.score - addN, p.score, r), dd = Math.max(decs(p.score), decs(addN));
+            q.val.textContent = fmt(Math.round(v * 10 ** dd) / 10 ** dd, dd);
+            s = 1 + .05 * E.bump(P(t, at + .3, at + .8));                       // 짧은 맥박 한 번(튕김 없음)
+            on = E.out(P(t, at + .3, at + .55)) * (1 - .3 * P(t, at + .8, at + 1.3));
+            if (q.plus) { const u = P(t, at + .2, at + 1.2); S(q.plus, { y: -60 * E.out(u), o: E.bump(u) }) }
+          } else o = lerp(1, .55, E.out(P(t, at + .3, at + .8)));
+        }
+        flip(q.c, t, .2 + i * .08, .8, { s, o });
+        lightCard(q.c, on);
+      });
+    } };
+}
+
+// ───────── 6. compare: 좌우 고정 비교 (카메라가 왔다 갔다 하지 않는다)
+function kCompare() {
+  const side = (k, f) => { const o = D[k] && typeof D[k] === 'object' ? D[k] : {};
+    return { label: str(o.label ?? (typeof D[k] === 'string' ? D[k] : ''), k === 'left' ? '전' : '후'), value: o.value ?? D[f + 'v'], unit: str(o.unit ?? D[f + 'u'] ?? D.unit),
+      note: str(o.note ?? D[f + 'n']), img: str(o.img ?? D[f + 'img']), at: has(o.at ?? D[f + 'at']) ? num(o.at ?? D[f + 'at']) : null } };
+  const SD = [side('left', 'l'), side('right', 'r')];
+  SD[0].at ??= .9; SD[1].at ??= 1.6;
+  const roll = num(D.roll, 1.0), wi = D.win === 'left' || D.win === '1' || D.win === 1 ? 0 : D.win === 'right' || D.win === '2' || D.win === 2 ? 1 : -1;
+  const w = add(`<div class="col">${has(D.title) ? `<div class="label an">${rich(D.title)}</div>` : ''}<div class="c-row"></div></div>`);
+  const row = $('.c-row', w), lab = $('.label', w);
+  const panel = (s) => add(`<div class="c-panel glass an"><div class="label">${rich(s.label)}</div>${s.img ? `<img class="c-img" src="${esc(s.img)}">` : ''}
+      ${has(s.value) ? `<div class="c-val an${s.img ? ' img' : ''}"><span class="v">${isNum(s.value) ? fmt(0, decs(s.value)) : esc(s.value)}</span>${s.unit ? `<small>${esc(s.unit)}</small>` : ''}</div>` : ''}
+      ${s.note ? `<div class="c-note an">${rich(s.note)}</div>` : ''}</div>`, row);
+  const pa = panel(SD[0]); const mid = add(`<div class="c-mid an"><span>${esc(str(D.mid, '→'))}</span></div>`, row); const pb = panel(SD[1]);
+  const Pn = [pa, pb].map((e, k) => ({ e, lab: $('.label', e), val: $('.c-val', e), v: $('.v', e), note: $('.c-note', e), s: SD[k] }));
+  return {
+    lay() { if (lab) fit(lab, 1600); Pn.forEach(q => { fit(q.lab, 640, .7); if (q.val) fit(q.val, 650, .55) }) },
+    upd(t) {
+      if (lab) rise(lab, t, .05);
+      const t0 = lab ? .2 : .1;
+      const winAt = Math.max(SD[0].at, SD[1].at) + (isNum(SD[0].value) || isNum(SD[1].value) ? roll : .6);
+      Pn.forEach((q, k) => {
+        const s = q.s, hi = wi === k ? E.out(P(t, winAt, winAt + .4)) : 0, lo = wi >= 0 && wi !== k ? lerp(1, .62, E.out(P(t, winAt, winAt + .5))) : 1;
+        wipe(q.e, t, t0, .8, k ? 'r' : 'l', { o: lo });                          // 가운데에서 양쪽으로 열림
+        lightCard(q.e, hi);
+        if (q.val) {
+          if (isNum(s.value)) { const tv = num(s.value), r = E.out3(P(t, s.at, s.at + roll)); q.v.textContent = fmt(tv * r, decs(s.value)); S(q.val, { o: E.out(P(t, s.at - .15, s.at + .2)) }) }
+          else blurIn(q.val, t, s.at, .7);
+        }
+        if (q.note) rise(q.note, t, s.at + .5);
+      });
+      blurIn(mid, t, t0 + .35, .7);
+    } };
+}
+
+// ───────── 배경: 거의 검정 + 은은한 빛 두 개 + 64px 격자 + 가장자리 어둡게, 그레인
+const bg = $('#bg').getContext('2d'), gr = $('#grain').getContext('2d');
+function drawBG(t) {
+  const g = bg; g.fillStyle = '#07080B'; g.fillRect(0, 0, 1920, 1080);
+  const glow = (x, y, r, c, a) => { const q = g.createRadialGradient(x, y, 0, x, y, r); q.addColorStop(0, `rgba(${c},${a})`); q.addColorStop(1, `rgba(${c},0)`); g.fillStyle = q; g.fillRect(0, 0, 1920, 1080) };
+  const br = .88 + .12 * Math.sin(t * .6);
+  glow(170 + 36 * Math.sin(t * .22), 90 + 18 * Math.cos(t * .27), 1000, '255,138,91', .17 * br);   // 주황, 왼쪽 위
+  glow(1770 - 30 * Math.sin(t * .2), 1050, 920, '62,230,200', .10 * (1.12 - .25 * br));             // 청록, 오른쪽 아래
+  g.strokeStyle = 'rgba(255,255,255,.03)'; g.lineWidth = 1; g.beginPath();
+  for (let x = 0; x <= 1920; x += 64) { g.moveTo(x + .5, 0); g.lineTo(x + .5, 1080) }
+  for (let y = 28; y <= 1080; y += 64) { g.moveTo(0, y + .5); g.lineTo(1920, y + .5) }
+  g.stroke();
+  const v = g.createRadialGradient(960, 540, 480, 960, 540, 1180); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = v; g.fillRect(0, 0, 1920, 1080);
+}
+const grainImg = gr.createImageData(480, 270);
+function drawGrain(k) {                               // 프레임 번호로 시드를 고정한 그레인
+  let s = (k * 7919 + 104729) % 233280; const d = grainImg.data;
+  for (let i = 0; i < d.length; i += 4) { s = (s * 9301 + 49297) % 233280; const v = s / 233280 * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255 }
+  gr.putImageData(grainImg, 0, 0);
+}
+
+// ───────── 조립
+const KINDS = { title: kTitle, number: kNumber, steps: kSteps, verdict: kVerdict, score: kScore, compare: kCompare };
+let card;
+function fail(msg) { stage.innerHTML = ''; Object.assign(D, { label: '카드 오류', title: '값을 확인하세요', sub: msg, in: 'rise' }); delete D.of; card = kTitle(); setTimeout(() => { throw new Error(msg) }) }
+try {
+  if (ERR) throw new Error(ERR);
+  if (!KINDS[D.kind ?? 'title']) throw new Error(`kind=${D.kind} 는 없는 종류입니다. title · number · steps · verdict · score · compare 중 하나`);
+  card = KINDS[D.kind ?? 'title']();
+} catch (e) { fail(e.message) }
+let laid = false;
+window.render = function (t, dur) {
+  dur = +dur > 0 ? +dur : 4;
+  const end = Math.max(0, dur - .5);                  // 마지막 0.5초는 완전히 멈춘다
+  t = clamp(+t || 0, 0, end);
+  if (!laid) { card.lay(); laid = document.fonts.status === 'loaded' }
+  drawBG(t);
+  card.upd(t, dur, end);
+  frame.style.transform = `scale(${(1 + .02 * E.sine(P(t, 0, end))).toFixed(5)})`;   // 화면 전체가 천천히 2% 다가감
+  drawGrain(Math.round(t * 30));
+};
+// 브라우저에서 열었을 때: ?play=1 이면 반복 재생(미리 보기 전용), 아니면 마지막 장면
+if (Q.has('play')) { const dur = num(Q.get('dur'), 4), st = performance.now(); const loop = () => { window.render(((performance.now() - st) / 1000) % (dur + .8), dur); requestAnimationFrame(loop) }; requestAnimationFrame(loop) }
+else window.render(has(Q.get('t')) ? num(Q.get('t')) : 1e9, num(Q.get('dur'), 4));
+</script>
+</body>
+</html>

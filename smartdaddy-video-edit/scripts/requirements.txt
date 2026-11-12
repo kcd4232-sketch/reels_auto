@@ -1,0 +1,10 @@
+# 편집 스킬 스크립트용 Python 패키지 (Python 3.10 이상)
+# 설치: pip install -r requirements.txt
+# ffmpeg / ffprobe 는 따로 설치 (Windows: winget install Gyan.FFmpeg · Mac: brew install ffmpeg)
+faster-whisper>=1.0
+numpy>=1.24
+soundfile>=0.12
+Pillow>=10.0
+opencv-python>=4.8
+# 모션 카드(HTML → 영상) 렌더용. 설치 후 한 번: python -m playwright install chromium
+playwright>=1.40
