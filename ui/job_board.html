@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>영상 편집 작업 보드</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/app.css?v=green-inputs-20261113">
+  <script src="/app.js?v=green-inputs-20261113" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">instar_reels / 로컬 편집기</p>
+        <h1>영상 편집 작업 보드</h1>
+        <p class="subtitle">원본 영상과 대본을 작업별로 묶어 릴스를 순서대로 편집합니다</p>
+      </div>
+      <div class="header-actions">
+        <button id="openFolder" class="button secondary" type="button">결과 폴더 열기</button>
+        <button id="runSelected" class="button primary" type="button">선택 작업 편집 <span id="selectedCount">0</span></button>
+      </div>
+    </header>
+
+    <section class="toolbar" aria-label="작업 추가">
+      <button id="addVideos" class="button dark" type="button">+ 원본 영상 추가</button>
+      <label class="group-option"><input id="groupVideos" type="checkbox"> 여러 영상을 한 편으로 묶기</label>
+      <span class="toolbar-hint">기본은 영상 한 개당 작업 한 건입니다</span>
+      <input id="boardVideoInput" type="file" accept=".mp4,.mov,.mkv,.avi" multiple hidden>
+      <input id="detailVideoInput" type="file" accept=".mp4,.mov,.mkv,.avi" multiple hidden>
+      <input id="scriptInput" type="file" accept=".md,text/markdown" hidden>
+      <input id="musicInput" type="file" accept=".mp3,.wav,.m4a,.aac,.ogg" hidden>
+      <input id="outroInput" type="file" accept=".svg,.png,.jpg,.jpeg,.webp" hidden>
+      <input id="replaceInput" type="file" hidden>
+    </section>
+    <p class="quick-guide">1. 원본 영상 추가 <span aria-hidden="true">→</span> 2. 작업에서 대본·배경음·마지막 이미지 설정 <span aria-hidden="true">→</span> 3. 작업 체크 후 편집</p>
+
+    <main class="workspace">
+      <section class="jobs-panel panel">
+        <div class="panel-heading">
+          <div><p class="section-kicker">편집 대기열</p><h2>작업 목록 <span id="jobCount">0</span></h2></div>
+          <div class="list-options"><label class="completed-filter"><input id="showCompleted" type="checkbox" checked> 완료 작업 표시 <span id="completedCount">0</span></label><p class="panel-note">체크한 순서대로 한 건씩 실행됩니다.</p></div>
+        </div>
+        <div id="boardDrop" class="drop-zone board-drop" tabindex="0" role="button">
+          <strong>여기로 영상 파일을 끌어다 놓으세요</strong>
+          <span>또는 위의 <b>원본 영상 추가</b>를 누르세요</span>
+        </div>
+        <div class="table-wrap">
+          <table aria-label="편집 작업 목록">
+            <thead><tr><th><span class="sr-only">선택</span></th><th>작업 이름</th><th>원본 파일</th><th>추가 파일</th><th>진행 상태</th><th>결과</th></tr></thead>
+            <tbody id="jobsBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyJobs" class="empty-state">아직 작업이 없습니다. 영상 파일을 선택하거나 끌어다 놓으세요.</div>
+      </section>
+
+      <aside id="detailPanel" class="detail-panel panel" aria-label="작업 상세">
+        <div class="empty-detail"><span class="empty-symbol">▦</span><h2>작업을 선택하세요</h2><p>파일 첨부, 실행 방식, 결과를 여기서 확인합니다.</p></div>
+      </aside>
+    </main>
+    <footer class="footer"><span id="outputPath"></span><span>원본 파일은 그대로 보존됩니다.</span></footer>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

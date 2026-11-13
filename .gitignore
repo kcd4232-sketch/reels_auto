@@ -1,0 +1,28 @@
+# Local secrets written by `elevenlabs onboard`
+/.env.local
+
+/.venv/
+**/__pycache__/
+*.pyc
+
+# Credentials and account-specific voice configuration
+.env
+.env.*
+!.env.example
+elevenlabs_voice*.json
+!elevenlabs_voice.example.json
+
+# Local media, scripts, job state, outputs and browser captures
+/원본/
+/음성/
+/대본/
+/편집/
+/로고/*
+!/로고/README.md
+/.playwright-mcp/
+*.log
+*.mp4
+*.mov
+*.mp3
+*.wav
+*.m4a

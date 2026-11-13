@@ -1,0 +1,50 @@
+{
+  "version": "paperlogy-reels-2026-11-12-v3-hook-outro",
+  "narration": {
+    "playback_speed": 1.125,
+    "lead_seconds": 0.1
+  },
+  "font": {
+    "family": "Paperlogy",
+    "base_file": "Paperlogy-7Bold.ttf",
+    "emphasis_file": "Paperlogy-9Black.ttf"
+  },
+  "headline": {
+    "primary_fill": "#F14951",
+    "primary_scale": 1.10,
+    "max_width_ratio": 0.90,
+    "continuation_scale": 0.85,
+    "continuation_fill": "#FFFFFF",
+    "continuation_outline": "#1C1F23",
+    "label_fill": "#1C1F23",
+    "label_background": "#F7F6F2",
+    "max_rows": 3
+  },
+  "outline": {
+    "color": "#FFFFFF",
+    "dark_outer_edge": "#1C1F23"
+  },
+  "bottom_caption": {
+    "timing_source": "words.json",
+    "emphasis_scale": 1.25,
+    "emphasis_weight": "9Black",
+    "max_key_words_per_phrase": 2
+  },
+  "motion": {
+    "entry_duration_seconds": 0.25,
+    "max_vertical_travel_px_at_720w": 8,
+    "loop": false
+  },
+  "outro": {
+    "enabled": true,
+    "duration_seconds": 1.4,
+    "scene_fade_seconds": 0.8,
+    "brand": "COSMICO",
+    "subtitle": "GBTT · 윤소연 원장"
+  },
+  "layout": {
+    "target_total_text_height_ratio": 0.25,
+    "full_width_opaque_panel": false,
+    "protect_subject_and_existing_message": true
+  }
+}
